@@ -1,0 +1,30 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+
+@Entity({ name: 'users' })
+export class User {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @Index({ unique: true })
+  @Column({ type: 'varchar', length: 255 })
+  email!: string;
+
+  @Column({ type: 'varchar', length: 120 })
+  passwordHash!: string;
+
+  @Column({ type: 'boolean', default: true })
+  isActive!: boolean;
+
+  @CreateDateColumn({ type: 'timestamptz' })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz' })
+  updatedAt!: Date;
+}
