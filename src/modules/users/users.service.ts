@@ -1,6 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { UsersRepository } from './users.repository';
 import { User } from './user.entity';
+import { UserStatus } from './user.entity';
 
 @Injectable()
 export class UsersService {
@@ -19,6 +20,8 @@ export class UsersService {
     passwordHash: string;
     firstName?: string | null;
     lastName?: string | null;
+    status?: UserStatus;
+    emailVerified?: boolean;
   }): Promise<User> {
     const existing = await this.usersRepository.findByEmail(params.email);
     if (existing) {
@@ -41,5 +44,9 @@ export class UsersService {
       lockAfter: this.lockAfterFailedAttempts,
       lockMinutes: this.lockMinutes,
     });
+  }
+
+  activateByEmail(email: string): Promise<void> {
+    return this.usersRepository.activateByEmail(email);
   }
 }
