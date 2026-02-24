@@ -10,6 +10,8 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './login.dto';
 import { RegisterDto } from './register.dto';
 import { JwtGuard } from './jwt.guard';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { ResendOtpDto } from './dto/resend-otp.dto';
 
 type AuthUser = {
   userId: string;
@@ -33,17 +35,46 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a new user' })
   @ApiBody({ type: RegisterDto })
   @ApiOkResponse({
-    description: 'Access and refresh tokens',
+    description: 'Registration created; OTP sent to email',
     schema: {
       properties: {
-        accessToken: { type: 'string' },
-        refreshToken: { type: 'string' },
+        message: { type: 'string' },
       },
     },
   })
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @ApiOperation({ summary: 'Verify email OTP' })
+  @ApiBody({ type: VerifyOtpDto })
+  @ApiOkResponse({
+    schema: {
+      properties: {
+        message: { type: 'string' },
+      },
+    },
+  })
+  @Post('verify-otp')
+  async verifyOtp(@Body() dto: VerifyOtpDto) {
+    await this.authService.verifyOtp(dto);
+    return { message: 'Email verified successfully' };
+  }
+
+  @ApiOperation({ summary: 'Resend email OTP' })
+  @ApiBody({ type: ResendOtpDto })
+  @ApiOkResponse({
+    schema: {
+      properties: {
+        message: { type: 'string' },
+      },
+    },
+  })
+  @Post('resend-otp')
+  async resendOtp(@Body() dto: ResendOtpDto) {
+    await this.authService.resendOtp(dto.email);
+    return { message: 'OTP sent to email' };
   }
 
   @ApiOperation({ summary: 'Login and get tokens' })
@@ -77,7 +108,7 @@ export class AuthController {
       },
     },
   })
-  @Get('me')
+  @Get('profile')
   me(@Req() req: { user: AuthUser }) {
     return req.user;
   }

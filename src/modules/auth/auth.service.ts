@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { UserStatus } from '../users/user.entity';
+import { OtpService } from './services/otp.service';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly otpService: OtpService,
   ) {}
 
   async register(params: {
@@ -22,16 +24,28 @@ export class AuthService {
     password: string;
     firstName?: string | null;
     lastName?: string | null;
-  }): Promise<{ accessToken: string; refreshToken: string }> {
+  }): Promise<{ message: string }> {
     const passwordHash = await bcrypt.hash(params.password, 12);
     const user = await this.usersService.createUser({
       email: params.email,
       passwordHash,
       firstName: params.firstName ?? null,
       lastName: params.lastName ?? null,
+      status: UserStatus.INACTIVE,
+      emailVerified: false,
     });
 
-    return this.issueTokens({ userId: user.id, email: user.email });
+    await this.otpService.issueEmailVerificationOtp(user.email);
+
+    return { message: 'Registration successful. OTP sent to email.' };
+  }
+
+  verifyOtp(params: { email: string; otp: string }): Promise<void> {
+    return this.otpService.verifyEmailOtp(params);
+  }
+
+  resendOtp(email: string): Promise<void> {
+    return this.otpService.issueEmailVerificationOtp(email);
   }
 
   async login(params: {

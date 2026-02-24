@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
+import { UserStatus } from './user.entity';
 
 @Injectable()
 export class UsersRepository {
@@ -19,12 +20,16 @@ export class UsersRepository {
     passwordHash: string;
     firstName?: string | null;
     lastName?: string | null;
+    status?: UserStatus;
+    emailVerified?: boolean;
   }): Promise<User> {
     const entity = this.repo.create({
       email: params.email,
       passwordHash: params.passwordHash,
       firstName: params.firstName ?? null,
       lastName: params.lastName ?? null,
+      status: params.status,
+      emailVerified: params.emailVerified,
     });
 
     return this.repo.save(entity);
@@ -34,7 +39,6 @@ export class UsersRepository {
     userId: string;
     ip?: string | null;
   }): Promise<void> {
-    console.log(params);
     await this.repo.update(
       { id: params.userId },
       {
@@ -65,6 +69,17 @@ export class UsersRepository {
     await this.repo.update(
       { id: params.userId },
       { failedLoginCount: nextFailedCount, lockedUntil },
+    );
+  }
+
+  async activateByEmail(email: string): Promise<void> {
+    await this.repo.update(
+      { email },
+      {
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+      },
     );
   }
 }
