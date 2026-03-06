@@ -42,6 +42,7 @@ export class SmtpMailerService extends MailerService {
       to: params.to,
       subject: params.subject,
       text: params.text,
+      html: params.html,
     });
 
     this.logger.log(`Sent email to ${params.to} (${params.subject})`);

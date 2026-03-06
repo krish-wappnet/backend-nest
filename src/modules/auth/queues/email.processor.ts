@@ -9,6 +9,7 @@ import {
 } from './email-queue.constants';
 import { MailerService } from '../services/mailer.service';
 import { OtpEmailPayload } from './email-queue.service';
+import { renderOtpEmailHtml } from '../templates/otp-email.template';
 
 @Processor(EMAIL_QUEUE_NAME)
 export class EmailProcessor extends WorkerHost {
@@ -27,6 +28,10 @@ export class EmailProcessor extends WorkerHost {
         to: payload.to,
         subject: 'Your verification code',
         text: `Your verification code is ${payload.otp}. It expires in ${payload.expiresInMinutes} minutes.`,
+        html: renderOtpEmailHtml({
+          otp: payload.otp,
+          expiresInMinutes: payload.expiresInMinutes,
+        }),
       });
 
       this.logger.log(`Processed OTP email job for ${payload.to}`);

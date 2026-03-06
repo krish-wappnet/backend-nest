@@ -7,7 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
-import { UserStatus } from '../users/user.entity';
+import { UserRole, UserStatus } from '../users/user.entity';
 import { OtpService } from './services/otp.service';
 
 @Injectable()
@@ -80,15 +80,17 @@ export class AuthService {
     return this.issueTokens({
       userId: user.id,
       email: user.email,
+      role: user.role,
     });
   }
 
   private async issueTokens(params: {
     userId: string;
     email: string;
+    role: UserRole;
   }): Promise<{ accessToken: string; refreshToken: string }> {
     const accessToken = await this.jwtService.signAsync(
-      { sub: params.userId, email: params.email },
+      { sub: params.userId, email: params.email, role: params.role },
       {
         secret: this.getRequired('JWT_ACCESS_SECRET'),
         expiresIn: '1d',

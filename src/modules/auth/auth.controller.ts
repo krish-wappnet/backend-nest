@@ -16,6 +16,7 @@ import { ResendOtpDto } from './dto/resend-otp.dto';
 type AuthUser = {
   userId: string;
   email: string;
+  role: string;
 };
 
 type RequestWithIp = {
@@ -105,6 +106,7 @@ export class AuthController {
       properties: {
         userId: { type: 'string' },
         email: { type: 'string' },
+        role: { type: 'string' },
       },
     },
   })
