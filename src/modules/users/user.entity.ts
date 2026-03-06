@@ -7,6 +7,9 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OneToOne } from 'typeorm';
+import { VendorStatus } from './vendor-status.enum';
+import { Vendor } from '../vendors/vendor.entity';
 
 export enum UserRole {
   USER = 'USER',
@@ -60,6 +63,15 @@ export class User {
 
   @Column({ type: 'timestamptz', nullable: true })
   lockedUntil!: Date | null;
+
+  @Column({ type: 'boolean', default: false })
+  isVendor!: boolean;
+
+  @Column({ type: 'enum', enum: VendorStatus, nullable: true })
+  vendorStatus!: VendorStatus | null;
+
+  @OneToOne((): typeof Vendor => Vendor, (vendor: Vendor) => vendor.user)
+  vendor?: Vendor;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
