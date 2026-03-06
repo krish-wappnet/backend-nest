@@ -2,6 +2,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { UsersRepository } from './users.repository';
 import { User } from './user.entity';
 import { UserStatus } from './user.entity';
+import { VendorStatus } from './vendor-status.enum';
 
 @Injectable()
 export class UsersService {
@@ -11,8 +12,20 @@ export class UsersService {
 
   private readonly lockMinutes = 15;
 
+  findById(id: string): Promise<User | null> {
+    return this.usersRepository.findById(id);
+  }
+
   findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findByEmail(email);
+  }
+
+  updateVendorFlags(params: {
+    userId: string;
+    isVendor: boolean;
+    vendorStatus: VendorStatus | null;
+  }): Promise<void> {
+    return this.usersRepository.updateVendorFlags(params);
   }
 
   async createUser(params: {

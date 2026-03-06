@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
@@ -27,7 +25,7 @@ export class SmtpMailerService extends MailerService {
     }
 
     this.from = from;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
     this.transporter = nodemailer.createTransport({
       host,
       port,

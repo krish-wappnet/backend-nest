@@ -8,6 +8,11 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { DatabaseModule } from './database/database.module';
 import { RbacModule } from './modules/rbac/rbac.module';
+import { VendorsModule } from './modules/vendors/vendors.module';
+import { ProductsModule } from './modules/products/products.module';
+import { AttributesModule } from './modules/attributes/attributes.module';
+import { VariantsModule } from './modules/variants/variants.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 
 @Module({
   imports: [
@@ -28,6 +33,11 @@ import { RbacModule } from './modules/rbac/rbac.module';
     UsersModule,
     AuthModule,
     RbacModule,
+    VendorsModule,
+    ProductsModule,
+    AttributesModule,
+    VariantsModule,
+    InventoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { UserStatus } from './user.entity';
+import { VendorStatus } from './vendor-status.enum';
 
 @Injectable()
 export class UsersRepository {
@@ -11,8 +12,23 @@ export class UsersRepository {
     private readonly repo: Repository<User>,
   ) {}
 
+  findById(id: string): Promise<User | null> {
+    return this.repo.findOne({ where: { id } });
+  }
+
   findByEmail(email: string): Promise<User | null> {
     return this.repo.findOne({ where: { email } });
+  }
+
+  async updateVendorFlags(params: {
+    userId: string;
+    isVendor: boolean;
+    vendorStatus: VendorStatus | null;
+  }): Promise<void> {
+    await this.repo.update(
+      { id: params.userId },
+      { isVendor: params.isVendor, vendorStatus: params.vendorStatus },
+    );
   }
 
   async createUser(params: {
