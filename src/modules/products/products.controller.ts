@@ -7,11 +7,16 @@ import {
   Patch,
   Post,
   Req,
+  UploadedFile,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiBody,
+  ApiConsumes,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -40,34 +45,56 @@ export class ProductsController {
   @Roles(UserRole.USER)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Create product (vendor only)' })
+  @ApiConsumes('multipart/form-data')
   @ApiBody({
-    type: CreateProductDto,
-    description:
-      'Create a new clothing product with attributes that will be used to generate variants (for example size and color).',
-    examples: {
-      TShirt: {
-        summary: 'Basic t‑shirt with size and color',
-        value: {
-          name: 'Slim Fit Cotton T‑Shirt',
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        description: { type: 'string' },
+        category: { type: 'string', enum: Object.values(ProductCategory) },
+        brand: { type: 'string' },
+        basePrice: { type: 'number' },
+        attributes: {
+          type: 'string',
           description:
-            '100% cotton slim fit t‑shirt available in black, white and navy.',
-          category: ProductCategory.MENS,
-          brand: 'H&M',
-          basePrice: 1299,
-          attributes: {
+            'JSON string of attributes map (same shape as JSON request body).',
+          example: JSON.stringify({
             color: ['black', 'white', 'navy'],
             size: ['S', 'M', 'L', 'XL'],
-          },
-          defaultStock: 150,
-          warehouseLocation: 'RACK-A3-SHELF-02',
+          }),
+        },
+        defaultStock: { type: 'integer' },
+        warehouseLocation: { type: 'string' },
+        variantImages: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
         },
       },
+      required: ['name', 'basePrice', 'attributes'],
     },
   })
   @ApiOkResponse({ description: 'Created product with variants/inventory' })
   @Post()
-  create(@Body() dto: CreateProductDto, @Req() req: { user: AuthUser }) {
-    return this.productsService.createProduct({ userId: req.user.userId, dto });
+  @UseInterceptors(FilesInterceptor('variantImages'))
+  create(
+    @Body() dto: CreateProductDto,
+    @UploadedFiles()
+    variantImages:
+      | Array<{
+          originalname: string;
+          mimetype: string;
+          buffer: Buffer;
+          size: number;
+        }>
+      | undefined,
+    @Req() req: { user: AuthUser },
+  ) {
+    return this.productsService.createProduct({
+      userId: req.user.userId,
+      dto,
+      variantImages,
+    });
   }
 
   @UseGuards(JwtGuard, RolesGuard, VendorApprovedGuard)
@@ -139,5 +166,43 @@ export class ProductsController {
       productId: id,
     });
     return { message: 'Deleted' };
+  }
+
+  @UseGuards(JwtGuard, RolesGuard, VendorApprovedGuard)
+  @Roles(UserRole.USER)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Upload product variant image (vendor only)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    schema: { properties: { imageUrl: { type: 'string' } } },
+  })
+  @Post(':productId/variants/:variantId/image')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadVariantImage(
+    @Param('productId') productId: string,
+    @Param('variantId') variantId: string,
+    @UploadedFile()
+    file:
+      | { originalname: string; mimetype: string; buffer: Buffer; size: number }
+      | undefined,
+    @Req() req: { user: AuthUser },
+  ) {
+    return this.productsService.uploadVariantImage({
+      userId: req.user.userId,
+      productId,
+      variantId,
+      file,
+    });
   }
 }
