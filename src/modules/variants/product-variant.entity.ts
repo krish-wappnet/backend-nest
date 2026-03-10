@@ -41,6 +41,9 @@ export class ProductVariant {
   @Column({ type: 'numeric', precision: 12, scale: 2 })
   price!: string;
 
+  @Column({ type: 'text', nullable: true })
+  imageUrl!: string | null;
+
   @Column({
     type: 'enum',
     enum: ProductVariantStatus,

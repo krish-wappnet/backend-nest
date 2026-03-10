@@ -14,6 +14,7 @@ import { VariantAttributeValue } from '../variants/variant-attribute-value.entit
 import { Inventory } from '../inventory/inventory.entity';
 import { UsersModule } from '../users/users.module';
 import { VendorApprovedGuard } from '../../guards/vendor-approved.guard';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { VendorApprovedGuard } from '../../guards/vendor-approved.guard';
     ]),
     VendorsModule,
     UsersModule,
+    StorageModule,
   ],
   controllers: [ProductsController],
   providers: [ProductsRepository, ProductsService, VendorApprovedGuard],

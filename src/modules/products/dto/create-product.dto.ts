@@ -7,15 +7,10 @@ import {
   IsOptional,
   IsString,
   Min,
-  ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { ProductCategory } from '../product.entity';
-
-class ProductAttributesDto {
-  [key: string]: string[];
-}
 
 export class CreateProductDto {
   @ApiProperty({
@@ -27,7 +22,8 @@ export class CreateProductDto {
   name!: string;
 
   @ApiProperty({
-    example: '100% cotton slim fit t‑shirt available in multiple colors and sizes.',
+    example:
+      '100% cotton slim fit t‑shirt available in multiple colors and sizes.',
     required: false,
   })
   @IsString()
@@ -59,6 +55,17 @@ export class CreateProductDto {
     description:
       'Base price in the smallest currency unit (for example, cents).',
   })
+  @Transform(({ value }) => {
+    const v: unknown = value;
+    if (typeof value === 'number') {
+      return value;
+    }
+    if (typeof value === 'string' && value.trim() !== '') {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : v;
+    }
+    return v;
+  })
   @IsNumber()
   basePrice!: number;
 
@@ -70,15 +77,39 @@ export class CreateProductDto {
     description:
       'Map of attribute keys to list of possible values used to generate variants.',
   })
+  @Transform(({ value }) => {
+    const v: unknown = value;
+    if (typeof value === 'string') {
+      try {
+        const parsed: unknown = JSON.parse(value);
+        return parsed;
+      } catch {
+        return v;
+      }
+    }
+    return v;
+  })
   @IsObject()
-  @ValidateNested()
-  @Type(() => ProductAttributesDto)
   attributes!: Record<string, string[]>;
 
   @ApiProperty({
     example: 150,
     required: false,
     description: 'Initial on-hand stock quantity for the default variant.',
+  })
+  @Transform(({ value }) => {
+    const v: unknown = value;
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    if (typeof value === 'number') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : v;
+    }
+    return v;
   })
   @IsInt()
   @Min(0)
