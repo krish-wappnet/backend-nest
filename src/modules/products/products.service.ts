@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -7,11 +8,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { VendorsService } from '../vendors/vendors.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { Product } from './product.entity';
+import { Product, ProductLike, ProductStatus } from './product.entity';
 import { ProductsRepository } from './products.repository';
 import { cartesianProduct } from './utils/cartesian';
 import { generateSku } from './utils/sku';
@@ -19,10 +20,15 @@ import { Attribute } from '../attributes/attribute.entity';
 import { AttributeValue } from '../attributes/attribute-value.entity';
 import { ProductAttribute } from './product-attribute.entity';
 import { ProductAttributeValue } from './product-attribute-value.entity';
-import { ProductVariant } from '../variants/product-variant.entity';
+import {
+  ProductVariant,
+  ProductVariantStatus,
+} from '../variants/product-variant.entity';
 import { VariantAttributeValue } from '../variants/variant-attribute-value.entity';
 import { Inventory } from '../inventory/inventory.entity';
 import { MinioService, UploadedBinaryFile } from '../storage/minio.service';
+import { paginateQueryBuilder } from '../../common/pagination/paginate';
+import { PaginationQueryDto } from '../../common/pagination/pagination-query.dto';
 import { slugify } from './utils/slugify';
 
 @Injectable()
@@ -36,6 +42,8 @@ export class ProductsService {
     private readonly minioService: MinioService,
     @InjectRepository(ProductVariant)
     private readonly variantsRepo: Repository<ProductVariant>,
+    @InjectRepository(ProductLike)
+    private readonly productLikeRepo: Repository<ProductLike>,
   ) {}
 
   async createProduct(params: {
@@ -243,6 +251,7 @@ export class ProductsService {
       category: params.dto.category ?? null,
       brand: params.dto.brand ?? null,
       basePrice: params.dto.basePrice.toFixed(2),
+      status: params.dto.status ?? ProductStatus.DRAFT,
     });
     return manager.save(product);
   }
@@ -552,6 +561,23 @@ export class ProductsService {
     await this.productsRepository.softDelete(params.productId);
   }
 
+  async updateVendorProductStatus(params: {
+    userId: string;
+    productId: string;
+    status: ProductStatus;
+  }): Promise<void> {
+    const vendor = await this.vendorsService.getByUserIdOrThrow(params.userId);
+    const product = await this.productsRepository.findById(params.productId);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+    if (product.vendorId !== vendor.id) {
+      throw new ForbiddenException('Cannot access this product');
+    }
+
+    await this.productsRepository.updateStatus(params.productId, params.status);
+  }
+
   async uploadVariantImage(params: {
     userId: string;
     productId: string;
@@ -588,5 +614,120 @@ export class ProductsService {
     await this.variantsRepo.save(variant);
 
     return { imageUrl: uploaded.url };
+  }
+
+  async likeProduct(params: { userId: string; productId: string }) {
+    const existing = await this.productLikeRepo.findOne({
+      where: {
+        user: { id: params.userId },
+        product: { id: params.productId },
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException('Product already liked');
+    }
+
+    await this.productLikeRepo.save({
+      user: { id: params.userId },
+      product: { id: params.productId },
+    });
+  }
+
+  async unlikeProduct(params: { userId: string; productId: string }) {
+    const existing = await this.productLikeRepo.findOne({
+      where: {
+        user: { id: params.userId },
+        product: { id: params.productId },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Product not liked');
+    }
+
+    await this.productLikeRepo.remove(existing);
+  }
+
+  async setFeatured(productId: string, featured: boolean) {
+    const product = await this.productsRepository.findById(productId);
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (featured) {
+      const count = await this.productsRepository.countFeatured();
+
+      if (count >= 5) {
+        throw new BadRequestException(
+          'Only 5 products can be featured at a time',
+        );
+      }
+    }
+
+    await this.productsRepository.update(productId, { featured });
+  }
+
+  async getLowestPriceProducts(params: PaginationQueryDto) {
+    const qb = this.productsRepository.createQueryBuilder('product');
+    qb.where('product.status = :status', { status: ProductStatus.ACTIVE });
+    qb.andWhere('product.deletedAt IS NULL');
+    qb.orderBy('product.basePrice', 'ASC');
+    qb.addOrderBy('product.createdAt', 'DESC');
+
+    return paginateQueryBuilder(qb, params, { page: 1, limit: 20 });
+  }
+
+  async searchVariants(params: { q: string } & PaginationQueryDto) {
+    const raw = params.q.trim();
+    const tokens = raw.split(/\s+/).filter(Boolean);
+
+    if (tokens.length === 0) {
+      throw new BadRequestException('Search query is required');
+    }
+
+    const qb = this.variantsRepo
+      .createQueryBuilder('variant')
+      .leftJoinAndSelect('variant.product', 'product')
+      .leftJoinAndSelect('variant.inventory', 'inventory')
+      .leftJoinAndSelect('variant.attributeValues', 'vav')
+      .leftJoinAndSelect('vav.attributeValue', 'av')
+      .leftJoinAndSelect('av.attribute', 'attr')
+      .where('product.status = :productStatus', {
+        productStatus: ProductStatus.ACTIVE,
+      })
+      .andWhere('variant.status = :variantStatus', {
+        variantStatus: ProductVariantStatus.ACTIVE,
+      });
+
+    tokens.forEach((t, idx) => {
+      qb.andWhere(
+        new Brackets((sub) => {
+          sub
+            .where(`product.name ILIKE :t${idx}`)
+            .orWhere(`variant.sku ILIKE :t${idx}`)
+            .orWhere(`av.value ILIKE :t${idx}`);
+        }),
+      );
+      qb.setParameter(`t${idx}`, `%${t}%`);
+    });
+
+    qb.orderBy('variant.createdAt', 'DESC');
+
+    return paginateQueryBuilder(qb, {
+      page: params.page,
+      limit: params.limit,
+    });
+  }
+
+  async getLikedProducts(userId: string) {
+    const likes = await this.productLikeRepo.find({
+      where: { user: { id: userId } },
+      relations: { product: true },
+      order: { createdAt: 'DESC' },
+    });
+
+    return likes.map((l) => l.product);
   }
 }

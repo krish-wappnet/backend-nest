@@ -4,12 +4,14 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { OneToOne } from 'typeorm';
 import { VendorStatus } from './vendor-status.enum';
 import { Vendor } from '../vendors/vendor.entity';
+import { ProductLike } from '../products/product.entity';
 
 export enum UserRole {
   USER = 'USER',
@@ -81,4 +83,7 @@ export class User {
 
   @DeleteDateColumn({ type: 'timestamptz', nullable: true })
   deletedAt!: Date | null;
+
+  @OneToMany(() => ProductLike, (like) => like.user)
+  productLikes!: ProductLike[];
 }

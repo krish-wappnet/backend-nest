@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { ProductCategory } from '../product.entity';
+import { ProductCategory, ProductStatus } from '../product.entity';
 
 export class CreateProductDto {
   @ApiProperty({
@@ -68,6 +68,32 @@ export class CreateProductDto {
   })
   @IsNumber()
   basePrice!: number;
+
+  @ApiProperty({
+    example: ProductStatus.DRAFT,
+    enum: ProductStatus,
+    required: false,
+    description:
+      'Product status. Allowed values: 1 (DRAFT), 2 (ACTIVE), 3 (ARCHIVED).',
+  })
+  @Transform(({ value }) => {
+    const v: unknown = value;
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    if (typeof value === 'number') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : v;
+    }
+    return v;
+  })
+  @IsInt()
+  @IsEnum(ProductStatus)
+  @IsOptional()
+  status?: ProductStatus;
 
   @ApiProperty({
     example: {

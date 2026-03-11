@@ -39,6 +39,15 @@ export class Vendor {
   @Column({ type: 'varchar', length: 32 })
   phone!: string;
 
+  @Column({ type: 'text', nullable: true })
+  storeAddress!: string | null;
+
+  @Column({ type: 'decimal', precision: 10, scale: 8, nullable: true })
+  latitude!: number | null;
+
+  @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
+  longitude!: number | null;
+
   @Column({ type: 'enum', enum: VendorStatus, default: VendorStatus.PENDING })
   status!: VendorStatus;
 

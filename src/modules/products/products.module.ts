@@ -15,6 +15,7 @@ import { Inventory } from '../inventory/inventory.entity';
 import { UsersModule } from '../users/users.module';
 import { VendorApprovedGuard } from '../../guards/vendor-approved.guard';
 import { StorageModule } from '../storage/storage.module';
+import { ProductLike } from './product.entity';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { StorageModule } from '../storage/storage.module';
       ProductVariant,
       VariantAttributeValue,
       Inventory,
+      ProductLike,
     ]),
     VendorsModule,
     UsersModule,

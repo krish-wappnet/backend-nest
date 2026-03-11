@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -21,6 +23,7 @@ import { UserRole } from '../users/user.entity';
 import { VendorsService } from './vendors.service';
 import { ApplyVendorDto } from './dto/apply-vendor.dto';
 import { UpdateVendorStatusDto } from './dto/update-vendor-status.dto';
+import { ListVendorsQueryDto } from './dto/list-vendors-query.dto';
 
 type AuthUser = {
   userId: string;
@@ -41,6 +44,19 @@ export class VendorsController {
   @Post('apply')
   apply(@Body() dto: ApplyVendorDto, @Req() req: { user: AuthUser }) {
     return this.vendorsService.applyVendor({ userId: req.user.userId, dto });
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List vendors (ADMIN)' })
+  @ApiOkResponse({ description: 'List of vendors (supports search/status)' })
+  @Get()
+  list(@Query() query: ListVendorsQueryDto) {
+    return this.vendorsService.listVendorsWithFilters({
+      search: query.search,
+      status: query.status,
+    });
   }
 
   @UseGuards(JwtGuard, RolesGuard)

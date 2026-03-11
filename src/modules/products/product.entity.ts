@@ -12,6 +12,7 @@ import {
 import { Vendor } from '../vendors/vendor.entity';
 import { ProductVariant } from '../variants/product-variant.entity';
 import { ProductAttribute } from './product-attribute.entity';
+import { User } from '../users/user.entity';
 
 export enum ProductCategory {
   MENS = 'MENS',
@@ -20,9 +21,9 @@ export enum ProductCategory {
 }
 
 export enum ProductStatus {
-  DRAFT = 'DRAFT',
-  ACTIVE = 'ACTIVE',
-  ARCHIVED = 'ARCHIVED',
+  DRAFT = 1,
+  ACTIVE = 2,
+  ARCHIVED = 3,
 }
 
 @Entity({ name: 'products' })
@@ -58,7 +59,7 @@ export class Product {
   @Column({ type: 'numeric', precision: 12, scale: 2 })
   basePrice!: string;
 
-  @Column({ type: 'enum', enum: ProductStatus, default: ProductStatus.DRAFT })
+  @Column({ type: 'smallint', default: ProductStatus.DRAFT })
   status!: ProductStatus;
 
   @OneToMany(
@@ -81,4 +82,25 @@ export class Product {
 
   @DeleteDateColumn({ type: 'timestamptz', nullable: true })
   deletedAt!: Date | null;
+
+  @OneToMany(() => ProductLike, (like) => like.product)
+  productLikes!: ProductLike[];
+
+  @Column({ type: 'boolean', default: false })
+  featured!: boolean;
+}
+
+@Entity()
+export class ProductLike {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @ManyToOne(() => User, (user) => user.productLikes)
+  user: User;
+
+  @ManyToOne(() => Product, (product) => product.productLikes)
+  product: Product;
+
+  @CreateDateColumn()
+  createdAt: Date;
 }
