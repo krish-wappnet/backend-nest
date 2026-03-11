@@ -29,6 +29,9 @@ export class VendorsRepository {
     storeSlug: string;
     businessEmail: string;
     phone: string;
+    storeAddress: string;
+    latitude: number;
+    longitude: number;
     status?: VendorStatus;
   }): Promise<Vendor> {
     const entity = this.repo.create({
@@ -37,8 +40,39 @@ export class VendorsRepository {
       storeSlug: params.storeSlug,
       businessEmail: params.businessEmail,
       phone: params.phone,
+      storeAddress: params.storeAddress,
+      latitude: params.latitude,
+      longitude: params.longitude,
       status: params.status ?? VendorStatus.PENDING,
     });
     return this.repo.save(entity);
+  }
+
+  async find() {
+    return this.repo.find();
+  }
+
+  async list(params?: {
+    search?: string;
+    status?: VendorStatus;
+  }): Promise<Vendor[]> {
+    const qb = this.repo.createQueryBuilder('vendor');
+
+    if (params?.search) {
+      const search = params.search.trim();
+      if (search.length > 0) {
+        qb.andWhere('vendor.storeName ILIKE :search', {
+          search: `%${search}%`,
+        });
+      }
+    }
+
+    if (params?.status !== undefined) {
+      qb.andWhere('vendor.status = :status', { status: params.status });
+    }
+
+    qb.orderBy('vendor.createdAt', 'DESC');
+
+    return qb.getMany();
   }
 }

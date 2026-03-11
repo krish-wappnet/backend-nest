@@ -32,4 +32,22 @@ export class ApplyVendorDto {
   @IsString()
   @IsNotEmpty()
   phone!: string;
+
+  @ApiProperty({
+    example: '123 Main Street, Tech City, TC 12345',
+    description: 'Complete physical address of the vendor store.',
+  })
+  storeAddress!: string;
+
+  @ApiProperty({
+    example: 28.6139,
+    description: 'Latitude of the vendor store location.',
+  })
+  latitude!: number;
+
+  @ApiProperty({
+    example: 77.209,
+    description: 'Longitude of the vendor store location.',
+  })
+  longitude!: number;
 }

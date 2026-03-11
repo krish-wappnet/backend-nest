@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UploadedFile,
   UploadedFiles,
@@ -28,8 +29,11 @@ import { UserRole } from '../users/user.entity';
 import { VendorApprovedGuard } from '../../guards/vendor-approved.guard';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { UpdateProductStatusDto } from './dto/update-product-status.dto';
+import { SearchVariantsQueryDto } from './dto/search-variants-query.dto';
 import { ProductsService } from './products.service';
 import { ProductCategory } from './product.entity';
+import { PaginationQueryDto } from 'src/common/pagination/pagination-query.dto';
 
 type AuthUser = {
   userId: string;
@@ -40,6 +44,43 @@ type AuthUser = {
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get lowest price product (USER)' })
+  @ApiOkResponse({ description: 'Lowest priced active product' })
+  @Get('lowest-price')
+  getLowestPriceProduct(@Query() query: PaginationQueryDto) {
+    return this.productsService.getLowestPriceProducts({
+      page: query.page || 1,
+      limit: query.limit || 1,
+    });
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Search product variants (USER)' })
+  @ApiOkResponse({ description: 'Matching product variants (paginated)' })
+  @Get('variants/search')
+  searchVariants(@Query() query: SearchVariantsQueryDto) {
+    return this.productsService.searchVariants({
+      q: query.q,
+      page: query.page,
+      limit: query.limit,
+    });
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get liked products (USER)' })
+  @ApiOkResponse({ description: 'Liked products' })
+  @Get('liked')
+  getLikedProducts(@Req() req: { user: AuthUser }) {
+    return this.productsService.getLikedProducts(req.user.userId);
+  }
 
   @UseGuards(JwtGuard, RolesGuard, VendorApprovedGuard)
   @Roles(UserRole.USER)
@@ -55,6 +96,7 @@ export class ProductsController {
         category: { type: 'string', enum: Object.values(ProductCategory) },
         brand: { type: 'string' },
         basePrice: { type: 'number' },
+        status: { type: 'integer', enum: [1, 2, 3] },
         attributes: {
           type: 'string',
           description:
@@ -152,6 +194,70 @@ export class ProductsController {
       dto,
     });
     return { message: 'Updated' };
+  }
+
+  @UseGuards(JwtGuard, RolesGuard, VendorApprovedGuard)
+  @Roles(UserRole.USER)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Update product status (vendor only)' })
+  @ApiOkResponse({ schema: { properties: { message: { type: 'string' } } } })
+  @Patch(':id/status')
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateProductStatusDto,
+    @Req() req: { user: AuthUser },
+  ) {
+    await this.productsService.updateVendorProductStatus({
+      userId: req.user.userId,
+      productId: id,
+      status: dto.status,
+    });
+    return { message: 'Status updated' };
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Like product' })
+  @ApiOkResponse({ schema: { properties: { message: { type: 'string' } } } })
+  @Patch(':productId/like')
+  async likeProduct(
+    @Param('productId') productId: string,
+    @Req() req: { user: AuthUser },
+  ) {
+    await this.productsService.likeProduct({
+      userId: req.user.userId,
+      productId,
+    });
+    return { message: 'Liked' };
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Unlike product' })
+  @ApiOkResponse({ schema: { properties: { message: { type: 'string' } } } })
+  @Delete(':productId/unlike')
+  async unlikeProduct(
+    @Param('productId') productId: string,
+    @Req() req: { user: AuthUser },
+  ) {
+    await this.productsService.unlikeProduct({
+      userId: req.user.userId,
+      productId,
+    });
+    return { message: 'Unliked' };
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Toggle product featured status' })
+  @ApiOkResponse({ schema: { properties: { message: { type: 'string' } } } })
+  @Patch(':productId/featured')
+  async setFeatured(@Param('productId') productId: string) {
+    await this.productsService.setFeatured(productId, true);
+    return { message: 'Featured status updated' };
   }
 
   @UseGuards(JwtGuard, RolesGuard, VendorApprovedGuard)

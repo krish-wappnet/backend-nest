@@ -38,6 +38,9 @@ export class VendorsService {
       storeSlug: slugify(params.dto.storeSlug),
       businessEmail: params.dto.businessEmail,
       phone: params.dto.phone,
+      storeAddress: params.dto.storeAddress,
+      latitude: params.dto.latitude,
+      longitude: params.dto.longitude,
       status: VendorStatus.PENDING,
     });
 
@@ -69,5 +72,12 @@ export class VendorsService {
       isVendor: params.status === VendorStatus.APPROVED,
       vendorStatus: params.status,
     });
+  }
+
+  async listVendorsWithFilters(params?: {
+    search?: string;
+    status?: VendorStatus;
+  }) {
+    return this.vendorsRepository.list(params);
   }
 }
